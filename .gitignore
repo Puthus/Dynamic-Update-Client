@@ -1,0 +1,18 @@
+# Ignore sensitive configuration
+.env
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore temporary files
+*.tmp
+*.bak
+*.swp
+
+# Ignore Windows thumbnail cache
+Thumbs.db
+
+# Ignore system files
+.DS_Store
+desktop.ini
