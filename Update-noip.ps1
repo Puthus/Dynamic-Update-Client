@@ -73,7 +73,7 @@ if (-not (Test-Path $logPath)) {
 function Write-Log {
     param(
         [string]$Message,
-        [ValidateSet('INFO','SUCCESS','WARNING','ERROR')]
+        [ValidateSet('INFO', 'SUCCESS', 'WARNING', 'ERROR')]
         [string]$Level = 'INFO'
     )
     
@@ -84,7 +84,7 @@ function Write-Log {
     Add-Content -Path $logFile -Value $logEntry
     
     # Also write to console for manual testing
-    $color = switch($Level) {
+    $color = switch ($Level) {
         'SUCCESS' { 'Green' }
         'WARNING' { 'Yellow' }
         'ERROR' { 'Red' }
@@ -93,8 +93,8 @@ function Write-Log {
     Write-Host $logEntry -ForegroundColor $color
 }
 
-# Function to rotate log if too large
-function Rotate-Log {
+# Function to move/archive log if too large
+function Move-Log {
     if (Test-Path $logFile) {
         $logSize = (Get-Item $logFile).Length / 1MB
         if ($logSize -gt $maxLogSizeMB) {
@@ -110,7 +110,7 @@ function Show-Notification {
     param(
         [string]$Title,
         [string]$Message,
-        [ValidateSet('Info','Warning','Error')]
+        [ValidateSet('Info', 'Warning', 'Error')]
         [string]$Type = 'Info'
     )
     
@@ -170,7 +170,7 @@ function Send-EmailAlert {
 
 # Main script
 try {
-    Rotate-Log
+    Move-Log
     Write-Log "=== No-IP Update Started ===" -Level INFO
     Write-Log "IP Mode: $(if ($usePublicIP) { 'Public (WAN)' } else { 'Local (LAN)' })" -Level INFO
     
@@ -194,14 +194,10 @@ try {
         try {
             Write-Log "Checking adapters: $($networkAdapters -join ', ')" -Level INFO
             
-            $currentIP = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
-                Where-Object {
-                    $_.InterfaceAlias -in $networkAdapters -and
-                    $_.IPAddress -notlike "169.*" -and
-                    $_.AddressState -eq "Preferred"
-                } |
-                Sort-Object InterfaceMetric |
-                Select-Object -First 1 -ExpandProperty IPAddress)
+            $currentIP = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
+            Where-Object { $_.InterfaceAlias -in $networkAdapters -and $_.IPAddress -notlike "169.*" -and $_.AddressState -eq "Preferred" } |
+            Sort-Object @{Expression = { if ($_.InterfaceAlias -eq "Ethernet") { 0 } else { 1 } } }, InterfaceMetric |
+            Select-Object -First 1 -ExpandProperty IPAddress
             
             if (-not $currentIP) {
                 $errorMsg = "No valid IPv4 found for adapters: $($networkAdapters -join ', ')"
@@ -226,7 +222,7 @@ try {
     $base64Auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("${noipUsername}:${noipPassword}"))
     $headers = @{
         "Authorization" = "Basic $base64Auth"
-        "User-Agent" = "PowerShell No-IP Updater/1.0"
+        "User-Agent"    = "PowerShell No-IP Updater/1.0"
     }
     
     $updateUrl = "https://dynupdate.no-ip.com/nic/update?hostname=$hostname&myip=$currentIP"
@@ -241,7 +237,8 @@ try {
         if ($responseText -match "^good|^nochg") {
             $successMsg = if ($responseText -match "^good") {
                 "IP updated to $currentIP"
-            } else {
+            }
+            else {
                 "IP unchanged ($currentIP)"
             }
             Write-Log "Update successful! $successMsg" -Level SUCCESS

@@ -11,6 +11,11 @@ param(
 $taskName = "NoIP_Update_Task"
 $logFile = "D:\media-server\apps\DUC\logs\noip-update.log"
 
+# Load shared task helpers if available (optional)
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$helperPath = Join-Path $scriptDir "Lib-TaskHelpers.ps1"
+if (Test-Path $helperPath) { . $helperPath } else { Write-Host "Helper not found: $helperPath (continuing with built-in helper)" -ForegroundColor Yellow }
+
 function Show-TaskStatus {
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "  No-IP Task Status Check" -ForegroundColor Cyan
@@ -42,13 +47,9 @@ function Show-TaskStatus {
         }
         
         Write-Host "  Result Code:  " -NoNewline
-        $resultColor = if ($taskInfo.LastTaskResult -eq 0) { 'Green' } else { 'Red' }
-        Write-Host "0x$($taskInfo.LastTaskResult.ToString('X'))" -ForegroundColor $resultColor -NoNewline
-        if ($taskInfo.LastTaskResult -eq 0) {
-            Write-Host " (Success)" -ForegroundColor Green
-        } else {
-            Write-Host " (Error)" -ForegroundColor Red
-        }
+        $desc = Get-TaskResultDescription -ResultCode $taskInfo.LastTaskResult
+        $resultColor = if ($taskInfo.LastTaskResult -eq 0) { 'Green' } else { 'Yellow' }
+        Write-Host $desc -ForegroundColor $resultColor
         
         # Next run
         Write-Host "`nNext Execution:" -ForegroundColor Yellow

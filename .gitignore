@@ -9,7 +9,7 @@ logs/
 *.tmp
 *.bak
 *.swp
-
+*.csv
 # Ignore Windows thumbnail cache
 Thumbs.db
 

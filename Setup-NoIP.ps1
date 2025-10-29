@@ -1,18 +1,19 @@
-# No-IP Setup Script
-# This script helps you set up the No-IP updater with .env configuration
+# No-IP Complete Setup Script
+# Combines configuration setup and scheduled task creation
+# Run this script once to configure everything
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $envFile = Join-Path $scriptDir ".env"
-$envExample = Join-Path $scriptDir ".env.example"
+# $envExample = Join-Path $scriptDir ".env.example"
 $gitignore = Join-Path $scriptDir ".gitignore"
 
 Write-Host "`n========================================" -ForegroundColor Cyan
-Write-Host "  No-IP Dynamic DNS Updater Setup" -ForegroundColor Cyan
+Write-Host "  No-IP Complete Setup Wizard" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
 
-# Step 1: Create .gitignore if it doesn't exist
+#region Step 1: Create .gitignore if it doesn't exist
 if (-not (Test-Path $gitignore)) {
-    Write-Host "[1/4] Creating .gitignore..." -ForegroundColor Yellow
+    Write-Host "[1/6] Creating .gitignore..." -ForegroundColor Yellow
     @"
 # Ignore sensitive configuration
 .env
@@ -24,14 +25,18 @@ logs/
 # Ignore temporary files
 *.tmp
 *.bak
+*.csv
 "@ | Out-File -FilePath $gitignore -Encoding UTF8
     Write-Host "      ✓ .gitignore created" -ForegroundColor Green
-} else {
-    Write-Host "[1/4] .gitignore already exists" -ForegroundColor Gray
 }
+else {
+    Write-Host "[1/6] .gitignore already exists" -ForegroundColor Gray
+}
+#endregion
 
-# Step 2: Check if .env exists
-Write-Host "`n[2/4] Checking configuration..." -ForegroundColor Yellow
+#region Step 2: Check existing configuration
+Write-Host "`n[2/6] Checking configuration..." -ForegroundColor Yellow
+$skipConfig = $false
 if (Test-Path $envFile) {
     Write-Host "      ⚠ .env file already exists" -ForegroundColor Yellow
     $overwrite = Read-Host "      Do you want to reconfigure? (y/N)"
@@ -40,12 +45,13 @@ if (Test-Path $envFile) {
         $skipConfig = $true
     }
 }
+#endregion
 
-# Step 3: Create .env file
+#region Step 3: Create .env configuration
 if (-not $skipConfig) {
-    Write-Host "`n[3/4] Setting up configuration..." -ForegroundColor Yellow
+    Write-Host "`n[3/6] Setting up configuration..." -ForegroundColor Yellow
     
-    # Prompt for No-IP credentials
+    # No-IP Credentials
     Write-Host "`n  No-IP Credentials:" -ForegroundColor Cyan
     $username = Read-Host "    Username"
     $password = Read-Host "    Password" -AsSecureString
@@ -54,7 +60,7 @@ if (-not $skipConfig) {
     )
     $hostname = Read-Host "    Hostname (e.g., myhouse.ddns.net)"
     
-    # Prompt for IP configuration
+    # IP Configuration
     Write-Host "`n  IP Configuration:" -ForegroundColor Cyan
     Write-Host "    Which IP should be updated?" -ForegroundColor Gray
     Write-Host "      1 = Public IP (WAN) - for external access" -ForegroundColor Gray
@@ -72,7 +78,7 @@ if (-not $skipConfig) {
         }
     }
     
-    # Prompt for log path
+    # Logging Configuration
     Write-Host "`n  Logging:" -ForegroundColor Cyan
     $defaultLogPath = Join-Path $scriptDir "logs"
     $logPath = Read-Host "    Log directory (default: $defaultLogPath)"
@@ -80,12 +86,12 @@ if (-not $skipConfig) {
         $logPath = $defaultLogPath
     }
     
-    # Prompt for notifications
+    # Notifications
     Write-Host "`n  Notifications:" -ForegroundColor Cyan
     $showNotif = Read-Host "    Enable Windows notifications? (y/N)"
     $notifValue = if ($showNotif -eq 'y' -or $showNotif -eq 'Y') { 'true' } else { 'false' }
     
-    # Ask about email alerts
+    # Email Alerts
     Write-Host "`n  Email Alerts (optional - press Enter to skip):" -ForegroundColor Cyan
     $smtpServer = Read-Host "    SMTP Server (e.g., smtp.gmail.com)"
     
@@ -145,12 +151,14 @@ $emailConfig
         New-Item -ItemType Directory -Path $logPath -Force | Out-Null
         Write-Host "      ✓ Log directory created: $logPath" -ForegroundColor Green
     }
-} else {
-    Write-Host "`n[3/4] Skipped configuration" -ForegroundColor Gray
 }
+else {
+    Write-Host "`n[3/6] Skipped configuration" -ForegroundColor Gray
+}
+#endregion
 
-# Step 4: Test configuration
-Write-Host "`n[4/4] Testing configuration..." -ForegroundColor Yellow
+#region Step 4: Test configuration
+Write-Host "`n[4/6] Testing configuration..." -ForegroundColor Yellow
 
 $updateScript = Join-Path $scriptDir "Update-noip.ps1"
 if (Test-Path $updateScript) {
@@ -161,31 +169,78 @@ if (Test-Path $updateScript) {
     }
     catch {
         Write-Host "      ✗ Test failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "      Fix errors before continuing to task creation" -ForegroundColor Yellow
+        $SkipTaskCreation = $true
     }
-} else {
-    Write-Host "      ⚠ Update-noip.ps1 not found" -ForegroundColor Yellow
 }
+else {
+    Write-Host "      ⚠ Update-noip.ps1 not found at: $updateScript" -ForegroundColor Yellow
+    $SkipTaskCreation = $true
+}
+#endregion
 
-# Summary
+#region Step 5: Create Scheduled Task
+if (-not $SkipTaskCreation) {
+    Write-Host "`n[5/6] Creating scheduled task..." -ForegroundColor Yellow
+    $createTaskScript = Join-Path $scriptDir "CreateTask.ps1"
+    if (Test-Path $createTaskScript) {
+        try {
+            Write-Host "      Running Create Task Script..." -ForegroundColor Cyan
+            & $createTaskScript
+        }
+        catch {
+            Write-Host "Something Unexpected Happened!"
+        }
+    }
+    else {
+        Write-Host "      ⚠ CreateTask.ps1 not found at: $createTaskScript" -ForegroundColor Yellow
+    }
+}
+else {
+    Write-Host "`n[5/6] Skipped task creation" -ForegroundColor Gray
+}
+#endregion
+
+#region Step 6: Summary
+Write-Host "`n[6/6] Setup Complete!" -ForegroundColor Green
+
 Write-Host "`n========================================" -ForegroundColor Cyan
-Write-Host "  Setup Complete!" -ForegroundColor Green
+Write-Host "  Setup Summary" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
 
-Write-Host "Next steps:" -ForegroundColor Yellow
-Write-Host "  1. Review your .env file: " -NoNewline -ForegroundColor Gray
+Write-Host "Configuration file: " -NoNewline -ForegroundColor Yellow
 Write-Host $envFile -ForegroundColor White
-Write-Host "  2. Test the update script: " -NoNewline -ForegroundColor Gray
-Write-Host ".\Update-noip.ps1 -ShowNotification" -ForegroundColor White
-Write-Host "  3. Create scheduled task: " -NoNewline -ForegroundColor Gray
-Write-Host ".\CreateTask.ps1" -ForegroundColor White
-Write-Host "  4. Monitor the task: " -NoNewline -ForegroundColor Gray
-Write-Host ".\Monitor-NoIPTask.ps1" -ForegroundColor White
 
-Write-Host "`nImportant Security Notes:" -ForegroundColor Red
+if (Test-Path $envFile) {
+    Write-Host "Task created:       " -NoNewline -ForegroundColor Yellow
+    $taskExists = Get-ScheduledTask -TaskName "NoIP_Update_Task" -ErrorAction SilentlyContinue
+    if ($taskExists) {
+        Write-Host "Yes - NoIP_Update_Task" -ForegroundColor Green
+    }
+    else {
+        Write-Host "No - Create manually with CreateTask.ps1" -ForegroundColor Yellow
+    }
+}
+
+Write-Host "`nUseful Commands:" -ForegroundColor Yellow
+Write-Host "  Monitor task:      " -NoNewline -ForegroundColor Gray
+Write-Host ".\Monitor-NoIPTask.ps1" -ForegroundColor White
+Write-Host "  View logs:         " -NoNewline -ForegroundColor Gray
+Write-Host ".\Monitor-NoIPTask.ps1 -ShowLogs" -ForegroundColor White
+Write-Host "  Test manually:     " -NoNewline -ForegroundColor Gray
+Write-Host ".\Update-noip.ps1 -ShowNotification" -ForegroundColor White
+Write-Host "  Run task now:      " -NoNewline -ForegroundColor Gray
+Write-Host "Start-ScheduledTask -TaskName NoIP_Update_Task" -ForegroundColor White
+Write-Host "  Reconfigure:       " -NoNewline -ForegroundColor Gray
+Write-Host ".\Complete-NoIPSetup.ps1" -ForegroundColor White
+
+Write-Host "`nSecurity Reminders:" -ForegroundColor Red
 Write-Host "  • Never commit .env to version control" -ForegroundColor Gray
-Write-Host "  • Keep your .env file permissions restricted" -ForegroundColor Gray
+Write-Host "  • .env permissions restricted to your account" -ForegroundColor Gray
 Write-Host "  • Rotate passwords regularly" -ForegroundColor Gray
 
+Write-Host "`n========================================`n" -ForegroundColor Cyan
+#endregion
 # Offer to set file permissions
 Write-Host "`nWould you like to restrict .env file permissions? (Recommended)" -ForegroundColor Yellow
 $restrictPerms = Read-Host "Restrict to current user only? (Y/n)"

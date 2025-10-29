@@ -9,8 +9,8 @@ Automated PowerShell script to keep your No-IP hostname updated with your curren
 - ✅ **Detailed Logging**: Track all updates with timestamps
 - ✅ **Windows Notifications**: Optional desktop alerts
 - ✅ **Email Alerts**: Optional error notifications
-- ✅ **Scheduled Updates**: Runs every 5 minutes + on network connect
-- ✅ **Monitoring Tools**: Easy status checking
+- ✅ **Multiple Triggers**: Time-based (5 min) + 6 network event triggers
+- ✅ **Monitoring Tools**: Easy status checking + network event diagnostics
 
 ## Quick Start
 
@@ -133,7 +133,37 @@ D:\media-server\apps\DUC\
 
 ## Troubleshooting
 
-### Task Not Running
+### Identify Network Events on Your System
+
+Use the diagnostic tool to see which events fire when you switch networks:
+
+```powershell
+# Run this, then switch from Wi-Fi to Ethernet
+.\Monitor-NetworkEvents.ps1
+
+# Monitor for longer period
+.\Monitor-NetworkEvents.ps1 -Seconds 120
+
+# See ALL network events (verbose)
+.\Monitor-NetworkEvents.ps1 -ShowAll
+```
+
+This will show you exactly which Event IDs trigger on your system when you change networks.
+
+### Task Not Running on Network Switch
+
+The task includes 6 different network event triggers:
+1. **Event ID 10000** - Network Profile Connected
+2. **Event ID 4001** - Network Connected
+3. **Event ID 50036** - DHCP IP Assigned
+4. **Event ID 32** - Network Interface Connected
+5. **At Startup** - Backup trigger
+6. **Every 5 minutes** - Fallback timer
+
+If switching networks doesn't trigger the task:
+1. Run `.\Monitor-NetworkEvents.ps1` to identify which events fire on your system
+2. Manually add those Event IDs to the task in Task Scheduler
+3. The 5-minute timer ensures updates happen regardless
 
 ```powershell
 # Check task status
@@ -158,6 +188,22 @@ If using Local IP mode and seeing errors:
 - Verify credentials in `.env` are correct
 - Check No-IP account status at https://www.noip.com
 - Ensure hostname exists in your No-IP account
+
+### Task Scheduler Result Codes
+
+Common codes you might see:
+
+- `0x0` - ✅ Success
+- `0x41301` - ⏳ Task is currently running (not an error!)
+- `0x41303` - ⚠️ Task has not yet run
+- `0x41306` - Task was terminated by user
+- `0x8004131F` - Another instance is already running
+- `0x1` - Script file not found or execution error
+
+To see detailed error info, check the logs:
+```powershell
+.\Monitor-NoIPTask.ps1 -LastRun
+```
 
 ## Security Notes
 
