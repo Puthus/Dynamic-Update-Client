@@ -13,12 +13,12 @@ function Get-TaskResultDescription {
         0x1        = "Incorrect function called or unknown function called"
         0x2        = "File not found"
         0xA        = "The environment is incorrect"
-        0x41300   = "Task is ready to run"
-        0x41301   = "Task is currently running"
-        0x41302   = "Task is disabled"
-        0x41303   = "Task has not yet run"
-        0x41304   = "There are no more runs scheduled"
-        0x41306   = "Task was terminated by the user"
+        0x41300    = "Task is ready to run"
+        0x41301    = "Task is currently running"
+        0x41302    = "Task is disabled"
+        0x41303    = "Task has not yet run"
+        0x41304    = "There are no more runs scheduled"
+        0x41306    = "Task was terminated by the user"
         0x8004130F = "Credentials became corrupted"
         0x8004131F = "An instance of this task is already running"
         0x800710E0 = "The operator or administrator has refused the request"
@@ -33,4 +33,9 @@ function Get-TaskResultDescription {
     return $hexCode
 }
 
-Export-ModuleMember -Function Get-TaskResultDescription
+# Only export module members when this file is imported as a module (.psm1)
+# When dot-sourced as a plain script, Export-ModuleMember will throw the
+# "can only be called from inside a module" error. Guard it here.
+if ($null -ne $PSModuleInfo) {
+    Export-ModuleMember -Function Get-TaskResultDescription
+}

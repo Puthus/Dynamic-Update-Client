@@ -189,7 +189,7 @@ if (-not $SkipTaskCreation) {
             & $createTaskScript
         }
         catch {
-            Write-Host "Something Unexpected Happened!"
+            Write-Host "      ✗ Failed to create task: $($_.Exception.Message)" -ForegroundColor Red
         }
     }
     else {
